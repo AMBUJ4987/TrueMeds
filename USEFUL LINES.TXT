@@ -1,0 +1,10 @@
+uvicorn backend.app:app --reload
+
+
+
+
+#the demo 
+
+{
+  "image_path": "E:\\TrueMeds\\DATASET\\demo_metronidazole.jpg"
+}

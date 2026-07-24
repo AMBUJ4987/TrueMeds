@@ -35,11 +35,10 @@ def verify_medicine(request: ImageRequest):
     fields = extract_fields(
         ocr_result["ocr_text"]
     )
-
+    print(type(fields))
+    print(fields)
     # Matcher
-    match = find_match(
-        fields["drug_name"]
-    )
+    match = find_match(fields)
 
     # Risk Engine
     report = assess_risk(
