@@ -7,14 +7,10 @@ master_df = pd.read_csv(
     r"E:\TrueMeds\DATASET\CSV\master_final.csv"
 )
 
-medicine_names = (
-    master_df["Drug_Name"]
-    .fillna("")
-    .astype(str)
-    .tolist()
-)
 
-MATCH_THRESHOLD = 75
+
+
+MATCH_THRESHOLD = 70
 
 
 # Normalize medicine names
@@ -23,6 +19,33 @@ def normalize_name(name):
     name = str(name).lower()
 
     words_to_remove = [
+        "hydrochloride",
+
+"sodium",
+
+"cream",
+
+"ointment",
+
+"gel",
+
+"drops",
+
+"dry",
+
+"syrup",
+
+"powder",
+
+"mr",
+
+"er",
+
+"xr",
+
+"sr",
+
+"cr",
         "tablets",
         "tablet",
         "capsules",
@@ -56,6 +79,7 @@ def normalize_company(company):
     company = str(company).lower()
 
     remove = [
+        
         "m/s",
         "private",
         "pvt",
@@ -75,27 +99,51 @@ def normalize_company(company):
 
     return " ".join(company.split())
 
+# EXTRACT STRENGTH 
+def extract_strength(text):
+
+    match = re.search(r"\d+\s*mg", str(text).lower())
+
+    if match:
+        return match.group()
+
+    return ""
+
+master_df["strength"] = master_df["Drug_Name"].apply(extract_strength)
+
+master_df["normalized_name"] = (
+    master_df["Drug_Name"]
+    .fillna("")
+    .apply(normalize_name)
+)
+
+master_df["normalized_company"] = (
+    master_df["Manufacturer"]
+    .fillna("")
+    .apply(normalize_company)
+)
 
 # Match medicine using:
 # 1. Drug name
 # 2. Manufacturer
 # 3. Batch number
 def find_match(fields):
+    normalized_database = master_df["normalized_name"].tolist()
 
     if not fields:
         return None
 
-    drug_name = fields.get("drug_name", "")
+    generic_name = fields.get("generic_name", "")
+    brand_name = fields.get("brand_name", "")
+    drug_name = generic_name
+    if not drug_name:
+        drug_name = brand_name
     manufacturer = fields.get("manufacturer", "")
     batch_number = fields.get("batch_number", "")
-
     normalized_query = normalize_name(drug_name)
+    brand = normalize_name(brand_name)
 
-    normalized_database = [
-        normalize_name(name)
-        for name in medicine_names
-    ]
-
+    
     # Retrieve Top 10 candidates using medicine name
     candidates = process.extract(
         normalized_query,
@@ -103,6 +151,8 @@ def find_match(fields):
         scorer=fuzz.token_sort_ratio,
         limit=10
     )
+    for c in candidates:
+        print(c)
 
     if not candidates:
         return None
@@ -113,7 +163,9 @@ def find_match(fields):
     best_drug_score = 0
     best_company_score = 0
     best_batch_score = 0
-
+    query_strength = extract_strength(
+    fields.get("strength", "")
+)
     for candidate in candidates:
 
         drug_score = candidate[1]
@@ -124,23 +176,57 @@ def find_match(fields):
 
         index = candidate[2]
         row = master_df.iloc[index]
+        
+        db_strength = row["strength"]
 
-        company_score = fuzz.token_sort_ratio(
-            normalize_company(manufacturer),
-            normalize_company(row["Manufacturer"])
-        )
+        if query_strength and db_strength:
+            strength_score = fuzz.ratio(
+        query_strength,
+        db_strength
+    )
+        else:
+            strength_score = 100
+        brand_score = 0
+        if brand:
+            brand_score = fuzz.partial_ratio(
+        brand,
+        normalize_name(row["Drug_Name"])
+    )
+        else:
+            brand_score=100
 
-        batch_score = fuzz.ratio(
-            str(batch_number).upper(),
-            str(row["Batch_No"]).upper()
-        )
+        # Manufacturer similarity
+        if pd.isna(row["Manufacturer"]) or row["Manufacturer"] == "":
+            company_score = 100
+        else:
+            company_score = fuzz.token_sort_ratio(
+                normalize_company(manufacturer),
+                normalize_company(row["Manufacturer"])
+    )
+
+# Batch number similarity
+        if pd.isna(row["Batch_No"]) or row["Batch_No"] == "":
+            batch_score = 100
+        else:
+            batch_score = fuzz.ratio(
+                str(batch_number).upper(),
+                str(row["Batch_No"]).upper()
+    )
+
 
         # Weighted score
         final_score = (
-            0.50 * drug_score +
-            0.30 * company_score +
-            0.20 * batch_score
-        )
+    0.35 * drug_score +
+    0.15 * brand_score +
+    0.20 * company_score +
+    0.15 * batch_score +
+    0.15 * strength_score
+)
+        print("Drug:", drug_score)
+        print("Company:", company_score)
+        print("Batch:", batch_score)
+        print("Final:", final_score)
+        print("----------------")
 
         if final_score > best_score:
 
@@ -155,6 +241,7 @@ def find_match(fields):
     if best_row is None:
         return None
 
+    print(best_score)
     # Overall confidence too low
     if best_score < MATCH_THRESHOLD:
         return None
@@ -203,9 +290,17 @@ def find_match(fields):
 if __name__ == "__main__":
 
     sample = {
-        "drug_name": "Metronidazole Tablets",
-        "manufacturer": "J.B. Chemicals & Pharmaceuticals Ltd",
-        "batch_number": "BM325171"
-    }
+
+    "generic_name":"Metronidazole",
+
+    "brand_name":"Metrogyl-400",
+
+    "manufacturer":"J.B. Chemicals",
+
+    "batch_number":"BM325171",
+
+    "strength":"400 mg"
+
+}
 
     print(find_match(sample))

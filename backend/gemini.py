@@ -22,12 +22,18 @@ Extract the following information from the OCR text.
 Return ONLY valid JSON.
 
 Fields:
-- drug_name
-- manufacturer
-- batch_number
-- manufacturing_date
-- expiry_date
-- strength
+brand_name
+generic_name
+manufacturer
+batch_number
+manufacturing_date
+expiry_date
+strength
+
+If both brand and generic appear, return both.
+
+If only the brand appears but the generic medicine is obvious from the package,
+infer the generic medicine name.
 
 If unavailable, return null.
 

@@ -8,3 +8,7 @@ uvicorn backend.app:app --reload
 {
   "image_path": "E:\\TrueMeds\\DATASET\\demo_metronidazole.jpg"
 }
+
+{
+  "image_path": "E:\\TrueMeds\\DATASET\\Demo_cipla.jpg"
+}

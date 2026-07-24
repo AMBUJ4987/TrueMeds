@@ -4,20 +4,20 @@ def assess_risk(match_result, extracted_fields=None):
 
         return {
 
-            "verification_status": "Unknown",
+            "verification_status": "No Regulatory Alert Found.",
 
-            "authenticity_score": 50,
+            "authenticity_score": 51,
 
-            "risk_level": "Unknown",
+            "risk_level": "Low",
 
-            "message": "Medicine could not be matched with the CDSCO database.",
+            "message": "This medicine was not found in the CDSCO NSQ, Recall, or Spurious database. Based on the available regulatory data, no matching regulatory alert exists for the extracted medicine and batch.",
 
-            "recommendation": "Please verify the medicine manually or consult a pharmacist.",
+            "recommendation": "No regulatory alert was found for this medicine. If you have concerns about the packaging or source, verify it with your pharmacist or healthcare provider.",
 
             "extracted_fields": extracted_fields,
 
-            "matched_record": None
-
+            "match_found": False,
+"matched_record": None
         }
 
     status = str(match_result["status"]).upper()
